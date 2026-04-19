@@ -1,0 +1,96 @@
+version: "3.7"
+services:
+  fr24feed-piaware:
+    container_name: fr24feed
+    image: "docker.io/thomx/fr24feed-piaware:2.7.0"
+    restart: unless-stopped
+    volumes:
+      - /etc/localtime:/etc/localtime:ro # needed to sync time for MLAT
+    environment:
+      - "FR24FEED_FR24KEY=${FR24KEY}"
+      - "PIAWARE_FEEDER_DASH_ID=${PIAWARE_ID}"
+      - "HTML_SITE_LAT=${LAT}"
+      - "HTML_SITE_LON=${LON}"
+      - "HTML_SITE_NAME=${NAME}"
+      - "SERVICE_ENABLE_PIAWARE=true"
+    devices:
+      - "/dev/bus/usb/001/${USB_ID}"
+    # ports
+    # 8754 - DUMP1090 server port
+    # 8080 - HTTP server port (changed it to 6969 to not interfere with pihole)
+    ports:
+      - "8754:8754"
+      - "${WEB_PORT:-6969}:8080"
+    logging:
+      options:
+        max-size: "30m"
+    tmpfs:
+      - /run:exec,size=32M
+      - /planefinder/log:exec,size=32M
+      - /usr/lib/fr24/public_html/data:size=32M
+
+  influxdb:
+    image: influxdb:2
+    container_name: influxdb
+    restart: unless-stopped
+    environment:
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_USERNAME=admin
+      - DOCKER_INFLUXDB_INIT_PASSWORD=${INFLUXDB_PASSWORD}
+      - DOCKER_INFLUXDB_INIT_ORG=${INFLUXDB_ORG:-adsb}
+      - DOCKER_INFLUXDB_INIT_BUCKET=${INFLUXDB_BUCKET:-adsb}
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=${INFLUXDB_TOKEN}
+    volumes:
+      - influxdb_data:/var/lib/influxdb2
+    ports:
+      - "8086:8086"
+    logging:
+      options:
+        max-size: "30m"
+
+  adsb-collector:
+    build: ./adsb-collector
+    container_name: adsb-collector
+    restart: unless-stopped
+    labels:
+      - "com.centurylinklabs.watchtower.enable=false"
+    environment:
+      - DUMP1090_URL=http://fr24feed:8080
+      - INFLUXDB_URL=http://influxdb:8086
+      - INFLUXDB_TOKEN=${INFLUXDB_TOKEN}
+      - INFLUXDB_ORG=${INFLUXDB_ORG:-adsb}
+      - INFLUXDB_BUCKET=${INFLUXDB_BUCKET:-adsb}
+    volumes:
+      - adsb_db:/data
+    depends_on:
+      - influxdb
+      - fr24feed-piaware
+    logging:
+      options:
+        max-size: "30m"
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana-adsb
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
+      - INFLUXDB_TOKEN=${INFLUXDB_TOKEN}
+      - INFLUXDB_ORG=${INFLUXDB_ORG:-adsb}
+      - INFLUXDB_BUCKET=${INFLUXDB_BUCKET:-adsb}
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    depends_on:
+      - influxdb
+    logging:
+      options:
+        max-size: "30m"
+
+volumes:
+  influxdb_data:
+  grafana_data:
+  adsb_db:
