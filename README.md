@@ -4,9 +4,10 @@ A self-hosted ADS-B flight tracking dashboard that goes beyond what FlightRadar2
 
 ## Why I built this
 
-The built-in FR24 feeder dashboard tells you useful but shallow things: how many aircraft you're seeing, your range, your feed status. What it doesn't tell you is anything *interesting* about what's flying over your antenna.
+The built-in FR24 feeder dashboard tells you useful but shallow things: how many aircraft you're seeing, your range, your feed status. What it doesn't tell you is anything _interesting_ about what's flying over your antenna.
 
 I wanted to know:
+
 - **Which airlines and operators** are in my coverage area
 - **The actual tail numbers** (registrations) of aircraft I'm tracking
 - **Flight numbers** linked to physical airframes
@@ -14,9 +15,12 @@ I wanted to know:
 
 So I built a small collector that polls my local dump1090 feed, enriches each aircraft with data from the OpenSky Network aircraft database and the readsb operators database, and writes it all into InfluxDB. Grafana sits on top and turns it into a dashboard I actually want to look at.
 
-## Screenshot
+## Dashboard
 
-<!-- Add a screenshot of your Grafana dashboard here -->
+![alt text](img/overview.png)
+![alt text](img/overview-3.png)
+![alt text](img/overview-4.png)
+![alt text](img/overview-2.png)
 
 ## How it works
 
@@ -47,16 +51,17 @@ The collector runs inside Docker alongside the other services. Aircraft and oper
 
 ## Stack
 
-| Service | Image |
-|---------|-------|
-| ADS-B decoder + feeder | `thomx/fr24feed-piaware` |
-| Data collector | custom Python (this repo) |
-| Time-series database | `influxdb:2` |
-| Dashboard | `grafana/grafana` |
+| Service                | Image                     |
+| ---------------------- | ------------------------- |
+| ADS-B decoder + feeder | `thomx/fr24feed-piaware`  |
+| Data collector         | custom Python (this repo) |
+| Time-series database   | `influxdb:2`              |
+| Dashboard              | `grafana/grafana`         |
 
 ## Setup
 
 1. Copy the example env file and fill in your values:
+
    ```bash
    cp .env.example .env
    ```
@@ -69,6 +74,7 @@ The collector runs inside Docker alongside the other services. Aircraft and oper
    - `INFLUXDB_PASSWORD` / `INFLUXDB_TOKEN` / `GRAFANA_PASSWORD` — set strong secrets
 
 3. Start everything:
+
    ```bash
    make update
    ```
